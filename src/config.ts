@@ -2,7 +2,6 @@ import { Layer, Effect, Schema } from "effect"
 import * as Context from "effect/Context"
 import * as SqlClient from "effect/sql/SqlClient"
 import { SqlError } from "effect/sql/SqlError"
-import { defaultLanguages } from "./structure.js"
 import { scaffolds, supportedLanguages, SupportedLanguageSchema, type Scaffold, type SupportedLanguage } from "./scaffolds.js"
 
 export type LanguageDefinition = Scaffold & {
@@ -53,7 +52,7 @@ export class WorkspaceConfig extends Context.Service<WorkspaceConfig, {
         const scaffold = scaffolds[language]
         yield* sql`
           INSERT INTO languages (name, run_command, enabled)
-          VALUES (${language}, ${scaffold.run}, ${defaultLanguages.includes(language as typeof defaultLanguages[number]) ? 1 : 0})
+          VALUES (${language}, ${scaffold.run}, 1)
           ON CONFLICT(name) DO NOTHING
         `
 
