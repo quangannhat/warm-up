@@ -1,3 +1,5 @@
+import { Schema } from "effect"
+
 export type Scaffold = {
   readonly files: ReadonlyArray<{
     readonly path: string
@@ -8,23 +10,21 @@ export type Scaffold = {
 
 export const supportedLanguages = [
   "typescript",
-  "javascript",
   "python",
   "rust",
+  "elixir",
   "go",
-  "shell"
+  "c"
 ] as const
 
 export type SupportedLanguage = (typeof supportedLanguages)[number]
+
+export const SupportedLanguageSchema = Schema.Literals(supportedLanguages)
 
 export const scaffolds: Record<SupportedLanguage, Scaffold> = {
   typescript: {
     files: [{ path: "main.ts", content: 'console.log("Hello from TypeScript")\n' }],
     run: "npx tsx main.ts"
-  },
-  javascript: {
-    files: [{ path: "main.js", content: 'console.log("Hello from JavaScript")\n' }],
-    run: "node main.js"
   },
   python: {
     files: [{ path: "main.py", content: 'print("Hello from Python")\n' }],
@@ -40,6 +40,10 @@ export const scaffolds: Record<SupportedLanguage, Scaffold> = {
     ],
     run: "cargo run"
   },
+  elixir: {
+    files: [{ path: "main.exs", content: 'IO.puts("Hello from Elixir")\n' }],
+    run: "elixir main.exs"
+  },
   go: {
     files: [
       {
@@ -53,8 +57,8 @@ export const scaffolds: Record<SupportedLanguage, Scaffold> = {
     ],
     run: "go run ."
   },
-  shell: {
-    files: [{ path: "main.sh", content: '#!/usr/bin/env bash\n\necho "Hello from shell"\n' }],
-    run: "bash main.sh"
+  c: {
+    files: [{ path: "main.c", content: '#include <stdio.h>\n\nint main(void) {\n    puts("Hello from C");\n    return 0;\n}\n' }],
+    run: "cc main.c -o main && ./main"
   }
 }

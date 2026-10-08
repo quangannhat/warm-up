@@ -34,7 +34,7 @@ Enable or disable a language:
 ./dist/src/cli.js languages disable rust
 ```
 
-Supported languages are `typescript`, `javascript`, `python`, `rust`, `go`, and `shell`. Language templates and enabled state are stored in `.warm-up.db` through Effect SQL. The database layer initializes the language and future `topics` tables before scaffolding starts.
+Supported languages are `typescript`, `python`, `rust`, `elixir`, `go`, and `c`. Language templates and enabled state are stored in `.warm-up.db` through Effect SQL. The database layer initializes the language and `topics` tables before scaffolding starts.
 
 Each language gets a runnable starter. For example, the generated files include `main.ts`, `main.py`, or a Rust Cargo project, and the CLI prints the command to run each one.
 

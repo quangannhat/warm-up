@@ -1,28 +1,29 @@
-import { Layer, Effect } from "effect"
+import { Layer, Effect, Schema } from "effect"
 import * as Context from "effect/Context"
 import * as SqlClient from "effect/sql/SqlClient"
 import { SqlError } from "effect/sql/SqlError"
 import { defaultLanguages } from "./structure.js"
-import { scaffolds, supportedLanguages, type Scaffold, type SupportedLanguage } from "./scaffolds.js"
+import { scaffolds, supportedLanguages, SupportedLanguageSchema, type Scaffold, type SupportedLanguage } from "./scaffolds.js"
 
 export type LanguageDefinition = Scaffold & {
   readonly name: SupportedLanguage
 }
 
-type LanguageRow = {
-  readonly name: SupportedLanguage
-  readonly run_command: string
-  readonly enabled: number
-}
+const LanguageRowSchema = Schema.Struct({
+  name: SupportedLanguageSchema,
+  run_command: Schema.String,
+  enabled: Schema.Number
+})
 
-type TemplateRow = {
-  readonly language: SupportedLanguage
-  readonly path: string
-  readonly content: string
-}
+const TemplateRowSchema = Schema.Struct({
+  language: SupportedLanguageSchema,
+  path: Schema.String,
+  content: Schema.String
+})
 
 export class WorkspaceConfig extends Context.Service<WorkspaceConfig, {
-  readonly enabledLanguages: Effect.Effect<ReadonlyArray<LanguageDefinition>, SqlError>
+  readonly enabledLanguages: () => Effect.Effect<ReadonlyArray<LanguageDefinition>, SqlError | Schema.SchemaError>
+  readonly allLanguages: () => Effect.Effect<ReadonlyArray<LanguageDefinition>, SqlError | Schema.SchemaError>
   readonly setLanguageEnabled: (language: SupportedLanguage, enabled: boolean) => Effect.Effect<void, SqlError>
 }>()(
   "warm-up/WorkspaceConfig"
@@ -65,38 +66,53 @@ export class WorkspaceConfig extends Context.Service<WorkspaceConfig, {
         }
       }
 
-      const enabledLanguages = Effect.gen(function* () {
-        const languages = yield* sql<LanguageRow>`
+      // Retire languages removed from the built-in catalog while preserving their stored templates.
+      yield* sql`
+        UPDATE languages
+        SET enabled = 0
+        WHERE name NOT IN ('typescript', 'python', 'rust', 'elixir', 'go', 'c')
+      `
+
+      const loadLanguages = Effect.fn("WorkspaceConfig.loadLanguages")(function* (onlyEnabled: boolean) {
+        const languages = yield* sql<Record<string, unknown>>`
           SELECT name, run_command, enabled
           FROM languages
-          WHERE enabled = 1
+          ${onlyEnabled ? sql`WHERE enabled = 1` : sql``}
           ORDER BY name
         `
 
-        return yield* Effect.forEach(languages, (language) =>
-          sql<TemplateRow>`
+        return yield* Effect.forEach(languages, (rawLanguage) => Effect.gen(function* () {
+          const language = yield* Schema.decodeUnknownEffect(LanguageRowSchema)(rawLanguage)
+          const rawTemplates = yield* sql<Record<string, unknown>>`
             SELECT language, path, content
             FROM language_templates
             WHERE language = ${language.name}
             ORDER BY path
-          `.pipe(
-            Effect.map((templates) => ({
-              name: language.name,
-              run: language.run_command,
-              files: templates.map(({ path, content }) => ({ path, content }))
-            }))
+          `
+          const templates = yield* Effect.forEach(rawTemplates, (rawTemplate) =>
+            Schema.decodeUnknownEffect(TemplateRowSchema)(rawTemplate)
           )
-        )
+
+          return {
+            name: language.name,
+            run: language.run_command,
+            files: templates.map(({ path, content }) => ({ path, content }))
+          }
+        }))
       })
 
-      const setLanguageEnabled = (language: SupportedLanguage, enabled: boolean) =>
+      const enabledLanguages = () => loadLanguages(true)
+      const allLanguages = () => loadLanguages(false)
+
+      const setLanguageEnabled = Effect.fn("WorkspaceConfig.setLanguageEnabled")((language: SupportedLanguage, enabled: boolean) =>
         sql`
           UPDATE languages
           SET enabled = ${enabled ? 1 : 0}
           WHERE name = ${language}
         `.pipe(Effect.asVoid)
+      )
 
-      return { enabledLanguages, setLanguageEnabled }
+      return { enabledLanguages, allLanguages, setLanguageEnabled }
     })
   )
 }
