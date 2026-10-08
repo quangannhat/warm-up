@@ -1,22 +1,43 @@
-# Effect Project Instructions
+# Agent Guidance
 
-This repository is an Effect v4 TypeScript CLI project. Use npm for package management.
+## Project
 
-<!-- effect-solutions:start -->
-## Effect Best Practices
+This is an Effect v4 TypeScript CLI project. Use npm for package management.
 
-**IMPORTANT:** Always consult effect-solutions before writing Effect code.
+## Before Editing Effect Code
 
-1. Run `effect-solutions list` to see available guides
-2. Run `effect-solutions show <topic>...` for relevant patterns (supports multiple topics)
-3. Search `~/.local/share/effect-solutions/effect` for real implementations
+Always consult the local Effect guidance before writing or changing Effect code:
 
-Topics: quick-start, project-setup, tsconfig, basics, services-and-layers, data-modeling, error-handling, config, testing, cli.
+1. Run `effect-solutions list`.
+2. Run `effect-solutions show <relevant-topics>`.
+3. Search `~/.local/share/effect-solutions/effect` for real v4 implementations when an API or pattern is unclear.
 
-Never guess at Effect patterns - check the guide first.
-<!-- effect-solutions:end -->
+Prefer the current installed v4 APIs over older Effect examples.
 
-## Local Effect Source
+The local Effect v4 source is available at `~/.local/share/effect-solutions/effect` for API and implementation reference.
 
-The Effect v4 repository is cloned to `~/.local/share/effect-solutions/effect` for reference.
-Use it to explore APIs, find usage examples, and understand implementation details when the documentation is not enough.
+## Implementation Rules
+
+- Use `Effect.gen` and `yield*` for sequential Effect workflows.
+- Use `Effect.fn("name")` for reusable effectful functions and service methods.
+- Model services with `Context.Service` and compose dependencies through `Layer`.
+- Keep errors typed with `Schema.TaggedError` and recover with `Effect.catchTag` or `Effect.catchTags`.
+- Decode SQL, JSON, CLI, and other external data with `Schema` before using it as domain data.
+- Provide application layers once at the CLI entry point.
+- Use `@effect/vitest` and `it.effect` for Effect tests.
+
+## Verification
+
+Run these commands after changes:
+
+```sh
+npm run check
+npm test
+npm run build
+```
+
+Run a relevant CLI smoke test when changing commands or persistence.
+
+## Generated Content
+
+`topics/` contains generated user content and is intentionally ignored by git. Do not add or commit files under `topics/`.
